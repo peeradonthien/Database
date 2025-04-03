@@ -1,0 +1,3 @@
+db.product.find(
+  { product_color: { $regex: "White", $options: "i" } }
+).sort({ product_id: 1 })

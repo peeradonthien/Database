@@ -1,0 +1,53 @@
+db.getCollection('orders_w_lines').aggregate(
+  [
+    { $match: { order_id: 3 } },
+    {
+      $unwind: {
+        path: '$order_lines',
+        includeArrayIndex: 'string',
+        preserveNullAndEmptyArrays: true
+      }
+    },
+    {
+      $lookup: {
+        from: 'product',
+        localField: 'order_lines.product_id',
+        foreignField: 'product_id',
+        as: 'product_data'
+      }
+    },
+    {
+      $unwind: {
+        path: '$product_data',
+        includeArrayIndex: 'string',
+        preserveNullAndEmptyArrays: true
+      }
+    },
+    {
+      $project: {
+        order_id: '$order_id',
+        total_payment: {
+          $multiply: [
+            '$order_lines.ordered_quantity',
+            '$product_data.product_price'
+          ]
+        },
+        _id: 0
+      }
+    },
+    {
+      $group: {
+        _id: '$order_id',
+        total_payment: { $sum: '$total_payment' }
+      }
+    },
+    {
+      $project: {
+        order_id: '$_id',
+        _id: 0,
+        total_payment: '$total_payment'
+      }
+    }
+  ],
+  { maxTimeMS: 60000, allowDiskUse: true }
+);

@@ -1,0 +1,71 @@
+db.getCollection('orders_w_lines').aggregate(
+  [
+    {
+      $unwind: {
+        path: '$order_lines',
+        includeArrayIndex: 'string',
+        preserveNullAndEmptyArrays: false
+      }
+    },
+    {
+      $group: {
+        _id: '$order_lines.product_id',
+        num_orders: { $sum: 1 }
+      }
+    },
+    {
+      $lookup: {
+        from: 'product',
+        localField: '_id',
+        foreignField: 'product_id',
+        as: 'product_data'
+      }
+    },
+    {
+      $group: {
+        _id: '$num_orders',
+        all_product: {
+          $push: {
+            product_id:
+              '$product_data.product_id',
+            product_name:
+              '$product_data.product_name'
+          }
+        }
+      }
+    },
+    { $sort: { _id: -1 } },
+    { $limit: 1 },
+    {
+      $unwind: {
+        path: '$all_product',
+        includeArrayIndex: 'string',
+        preserveNullAndEmptyArrays: false
+      }
+    },
+    {
+      $unwind: {
+        path: '$all_product.product_id',
+        includeArrayIndex: 'string',
+        preserveNullAndEmptyArrays: false
+      }
+    },
+    {
+      $unwind: {
+        path: '$all_product.product_name',
+        includeArrayIndex: 'string',
+        preserveNullAndEmptyArrays: false
+      }
+    },
+    {
+      $project: {
+        product_id: '$all_product.product_id',
+        product_description:
+          '$all_product.product_name',
+        _id: 0
+      }
+    },
+    { $sort: { product_id: 1 } }
+  ],
+  { maxTimeMS: 60000, allowDiskUse: true }
+);
